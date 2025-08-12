@@ -1,0 +1,1053 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Data Validation Console — BMS–CH</title>
+  <style>
+    :root {
+      --bg:#0f1115; --panel:#171a21; --panel-2:#1e2330; --accent:#4aa3ff; --text:#e9edf1; --muted:#9aa4b2;
+      --bad:#ff5d5d; --warn:#ffb84d; --good:#62d26f; --border:#2a3140;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--panel); position:sticky; top:0; z-index:20; }
+    header h1 { margin:0; font-size:18px; letter-spacing:.3px; }
+    header .actions { display:flex; gap:8px; flex-wrap: wrap; }
+    button, .file-wrap label { background:var(--panel-2); color:var(--text); border:1px solid var(--border); padding:8px 12px; border-radius:10px; cursor:pointer; font-size:14px; }
+    button:hover, .file-wrap label:hover { border-color:var(--accent); }
+    button.primary { background:var(--accent); color:#04162a; border-color:transparent; font-weight:600; }
+    .container { display:grid; grid-template-columns: 380px 1fr; gap:16px; padding:16px; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; }
+    .card h2 { margin:0; font-size:15px; padding:12px 14px; border-bottom:1px solid var(--border); background:rgba(255,255,255,0.02); }
+    .card .content { padding:12px; display:flex; flex-direction:column; gap:10px; }
+    textarea { width:100%; min-height:260px; resize:vertical; background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; line-height:1.4; font-size:13px; }
+    .file-wrap { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .file-wrap input[type="file"] { display:none; }
+    .status { font-size:12px; color:var(--muted); }
+    .divider { height:1px; background:var(--border); margin:6px 0; }
+    table { width:100%; border-collapse: collapse; font-size:13px; }
+    th, td { padding:8px 10px; border-bottom:1px solid var(--border); vertical-align: top; }
+    th { text-align:left; color:#c8d1dc; position:sticky; top:0; background:var(--panel); }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid var(--border); }
+    .pill.error { background: rgba(255,93,93,.12); color:#ff9a9a; border-color:#ff5d5d44;}
+    .pill.warn { background: rgba(255,184,77,.12); color:#ffd79a; border-color:#ffb84d44;}
+    .small { font-size:12px; color:var(--muted); }
+    .empty { border:1px dashed var(--border); border-radius:14px; padding:24px; text-align:center; color:var(--muted); }
+    .scroll { overflow:auto; max-height: 60vh; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Data Validation Console — BMS–CH</h1>
+    <div class="actions">
+      <button id="btnRun" class="primary">Run Validation</button>
+      <button id="btnDownload">Download Failures CSV</button>
+      <button id="btnSaveRules">Save Rules JSON</button>
+      <label for="rulesFile">Load Rules JSON</label><input id="rulesFile" type="file" accept="application/json"/>
+    </div>
+  </header>
+  <div class="container">
+    <section class="card">
+      <h2>Inputs</h2>
+      <div class="content">
+        <div class="file-wrap">
+          <label for="dataFile">Upload Data (CSV)</label>
+          <input id="dataFile" type="file" accept=".csv,text/csv" />
+        </div>
+        <div class="status" id="fileStatus">No file loaded.</div>
+        <div class="divider"></div>
+        <div class="file-wrap">
+          <label for="refFile">Upload Reference (CSV, optional)</label>
+          <input id="refFile" type="file" accept=".csv,text/csv" />
+        </div>
+        <div class="small">If provided, include a column named <span class="mono">Asset Number</span> for lookup validation.</div>
+        <div class="divider"></div>
+        <div class="small">Rules JSON (baked in but editable). New ops: <span class="mono">any</span>, <span class="mono">eq_field</span>, <span class="mono">lookup_in</span>.</div>
+        <textarea id="rulesArea">{
+  "meta": {
+    "name": "BMS\u2013CH Rule Set",
+    "version": "1.0"
+  },
+  "rules": [
+    {
+      "id": "REQ_Site_Name",
+      "name": "Site Name required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Site Name",
+          "op": "required"
+        }
+      ],
+      "message": "Site Name is required"
+    },
+    {
+      "id": "REQ_Work_Zone",
+      "name": "Work Zone required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Work Zone",
+          "op": "required"
+        }
+      ],
+      "message": "Work Zone is required"
+    },
+    {
+      "id": "REQ_Building_Name",
+      "name": "Building Name required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Building Name",
+          "op": "required"
+        }
+      ],
+      "message": "Building Name is required"
+    },
+    {
+      "id": "REQ_Floor",
+      "name": "Floor required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Floor",
+          "op": "required"
+        }
+      ],
+      "message": "Floor is required"
+    },
+    {
+      "id": "REQ_Room",
+      "name": "Room required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Room",
+          "op": "required"
+        }
+      ],
+      "message": "Room is required"
+    },
+    {
+      "id": "REQ_Status",
+      "name": "Status required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Status",
+          "op": "required"
+        }
+      ],
+      "message": "Status is required"
+    },
+    {
+      "id": "REQ_Asset_Name",
+      "name": "Asset Name required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Asset Name",
+          "op": "required"
+        }
+      ],
+      "message": "Asset Name is required"
+    },
+    {
+      "id": "REQ_Asset_Description",
+      "name": "Asset Description required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Asset Description",
+          "op": "required"
+        }
+      ],
+      "message": "Asset Description is required"
+    },
+    {
+      "id": "REQ_JACS_Code",
+      "name": "JACS Code required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "JACS Code",
+          "op": "required"
+        }
+      ],
+      "message": "JACS Code is required"
+    },
+    {
+      "id": "REQ_JACS_Code_ID",
+      "name": "JACS Code ID required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "JACS Code ID",
+          "op": "required"
+        }
+      ],
+      "message": "JACS Code ID is required"
+    },
+    {
+      "id": "REQ_Asset_Status",
+      "name": "Asset Status required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Asset Status",
+          "op": "required"
+        }
+      ],
+      "message": "Asset Status is required"
+    },
+    {
+      "id": "REQ_Asset_Record_Status",
+      "name": "Asset Record Status required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Asset Record Status",
+          "op": "required"
+        }
+      ],
+      "message": "Asset Record Status is required"
+    },
+    {
+      "id": "REQ_Manufacturer",
+      "name": "Manufacturer required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Manufacturer",
+          "op": "required"
+        }
+      ],
+      "message": "Manufacturer is required"
+    },
+    {
+      "id": "REQ_Model",
+      "name": "Model required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Model",
+          "op": "required"
+        }
+      ],
+      "message": "Model is required"
+    },
+    {
+      "id": "REQ_Serial",
+      "name": "Serial required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Serial",
+          "op": "required"
+        }
+      ],
+      "message": "Serial is required"
+    },
+    {
+      "id": "REQ_In_Service_Date",
+      "name": "In-Service Date required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "In-Service Date",
+          "op": "required"
+        }
+      ],
+      "message": "In-Service Date is required"
+    },
+    {
+      "id": "REQ_CA_Age",
+      "name": "CA-Age required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "CA-Age",
+          "op": "required"
+        }
+      ],
+      "message": "CA-Age is required"
+    },
+    {
+      "id": "REQ_CA_Condition",
+      "name": "CA-Condition required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "CA-Condition",
+          "op": "required"
+        }
+      ],
+      "message": "CA-Condition is required"
+    },
+    {
+      "id": "REQ_CA_Environment",
+      "name": "CA-Environment required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "CA-Environment",
+          "op": "required"
+        }
+      ],
+      "message": "CA-Environment is required"
+    },
+    {
+      "id": "REQ_Images",
+      "name": "Images required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Images",
+          "op": "required"
+        }
+      ],
+      "message": "Images is required"
+    },
+    {
+      "id": "STATUS_ONOFF",
+      "name": "Status must be Online or Offline",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Status",
+          "op": "in",
+          "value": [
+            "Online",
+            "Offline"
+          ]
+        }
+      ],
+      "message": "Status must be Online or Offline"
+    },
+    {
+      "id": "TAG_OR_REASON",
+      "name": "TagID or Reason Not Tagged required",
+      "severity": "error",
+      "any": [
+        {
+          "field": "TagID",
+          "op": "required"
+        },
+        {
+          "field": "Reason Not Tagged",
+          "op": "required"
+        }
+      ],
+      "message": "Provide TagID or Reason Not Tagged"
+    },
+    {
+      "id": "MATCH_AN_Site_Name",
+      "name": "Site Name must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Site Name",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Site Name does not match Asset Name"
+    },
+    {
+      "id": "MATCH_AN_Work_Zone",
+      "name": "Work Zone must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Work Zone",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Work Zone does not match Asset Name"
+    },
+    {
+      "id": "MATCH_AN_Building_Name",
+      "name": "Building Name must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Building Name",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Building Name does not match Asset Name"
+    },
+    {
+      "id": "MATCH_AN_Floor",
+      "name": "Floor must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Floor",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Floor does not match Asset Name"
+    },
+    {
+      "id": "MATCH_AN_Room",
+      "name": "Room must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Room",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Room does not match Asset Name"
+    },
+    {
+      "id": "ASSETNUM_LOOKUP",
+      "name": "Asset Number should exist in reference list (optional)",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Asset Number",
+          "op": "lookup_in",
+          "ref": "asset_numbers"
+        }
+      ],
+      "message": "Asset Number not found in reference list"
+    }
+  ]
+}</textarea>
+        <div class="small">Press <b>Ctrl/⌘+Enter</b> to run.</div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Results</h2>
+      <div class="content">
+        <div id="resultsWrap" class="scroll">
+          <div class="empty">Upload a CSV and click <b>Run Validation</b>.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+<script>
+// ===== CSV Utils =====
+function parseCSV(text) {
+  const rows = []; let i=0, field='', row=[], inQuotes=false;
+  while (i < text.length) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i+1] === '"') { field += '"'; i++; } else { inQuotes = false; } }
+      else { field += c; }
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field=''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i+1] === '\n') i++; row.push(field); field=''; rows.push(row); row=[]; }
+      else { field += c; }
+    }
+    i++;
+  }
+  if (field !== '' || text[text.length-1] === ',') row.push(field);
+  if (row.length) rows.push(row);
+  return rows;
+}
+
+function toCSV(rows) {
+  return rows.map(r => r.map(v => {
+    if (v == null) return '';
+    const s = String(v);
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+    return s;
+  }).join(',')).join('\n');
+}
+
+function downloadFile(name, content, mime='text/plain') {
+  const blob = new Blob([content], {type: mime});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function toDate(val) {
+  if (val instanceof Date) return val;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function isNumber(x){ return typeof x === 'number' && !isNaN(x); }
+
+// ===== Rule Engine =====
+function runChecks(rowObj, rule, refIndex) {
+  const pred = rule.if || [];
+  const any = rule.any || null;
+  const checks = rule.checks || [];
+
+  function getField(raw){ return raw; }
+  function parseValue(x){
+    if (x === '' || x == null) return x;
+    const n = Number(x);
+    return isNaN(n) ? x : n;
+  }
+
+  function evalOne(cond) {
+    const raw = rowObj[cond.field];
+    const val = parseValue(raw);
+    const op = cond.op;
+    const cmp = cond.value;
+    switch(op){
+      case 'required': return raw != null && String(raw).trim() !== '';
+      case 'eq': return val == cmp;
+      case 'neq': return val != cmp;
+      case 'gt': return Number(val) > Number(cmp);
+      case 'gte': return Number(val) >= Number(cmp);
+      case 'lt': return Number(val) < Number(cmp);
+      case 'lte': return Number(val) <= Number(cmp);
+      case 'regex': return new RegExp(cmp).test(String(raw||''));
+      case 'in': return Array.isArray(cmp) && cmp.includes(val);
+      case 'not_in': return Array.isArray(cmp) && !cmp.includes(val);
+      case 'type': {
+        if (cmp === 'number') return !isNaN(Number(val));
+        if (cmp === 'string') return typeof (raw==null?'':String(raw)) === 'string';
+        if (cmp === 'date') return toDate(raw) !== null;
+        return false;
+      }
+      case 'len_gte': return String(raw||'').length >= Number(cmp);
+      case 'len_lte': return String(raw||'').length <= Number(cmp);
+      case 'between': {
+        const [a,b] = cmp || [];
+        const n = Number(val);
+        return isNumber(n) && isNumber(Number(a)) && isNumber(Number(b)) && n >= a && n <= b;
+      }
+      case 'date_before': { const d = toDate(raw), t = toDate(cmp); return d && t && d.getTime() < t.getTime(); }
+      case 'date_after':  { const d = toDate(raw), t = toDate(cmp); return d && t && d.getTime() > t.getTime(); }
+      case 'eq_field': { const other = rowObj[cond.other]; return String(raw||'') === String(other||''); }
+      case 'lookup_in': {
+        if (!refIndex || !cond.ref) return true;
+        const key = String(raw||'').trim();
+        if (!key) return true; // empty treated as pass for warn-level lookups
+        const set = refIndex[cond.ref];
+        return set ? set.has(key) : true;
+      }
+      default: return true;
+    }
+  }
+
+  const predOk = pred.every(evalOne);
+  if (!predOk) return [];
+
+  if (any && Array.isArray(any) && any.length) {
+    const ok = any.some(evalOne);
+    if (!ok) return [any.map(c=>`${c.field} ${c.op}`).join(' OR ')];
+  }
+
+  const failed = [];
+  for (const c of checks) {
+    if (!evalOne(c)) failed.push(`${c.field} ${c.op}${c.value!==undefined? ' ' + JSON.stringify(c.value):''}`);
+  }
+  return failed;
+}
+
+// ===== State =====
+let csvRows = [];
+let headers = [];
+let failures = [];
+let rules = {
+  "meta": {
+    "name": "BMS\u2013CH Rule Set",
+    "version": "1.0"
+  },
+  "rules": [
+    {
+      "id": "REQ_Site_Name",
+      "name": "Site Name required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Site Name",
+          "op": "required"
+        }
+      ],
+      "message": "Site Name is required"
+    },
+    {
+      "id": "REQ_Work_Zone",
+      "name": "Work Zone required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Work Zone",
+          "op": "required"
+        }
+      ],
+      "message": "Work Zone is required"
+    },
+    {
+      "id": "REQ_Building_Name",
+      "name": "Building Name required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Building Name",
+          "op": "required"
+        }
+      ],
+      "message": "Building Name is required"
+    },
+    {
+      "id": "REQ_Floor",
+      "name": "Floor required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Floor",
+          "op": "required"
+        }
+      ],
+      "message": "Floor is required"
+    },
+    {
+      "id": "REQ_Room",
+      "name": "Room required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Room",
+          "op": "required"
+        }
+      ],
+      "message": "Room is required"
+    },
+    {
+      "id": "REQ_Status",
+      "name": "Status required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Status",
+          "op": "required"
+        }
+      ],
+      "message": "Status is required"
+    },
+    {
+      "id": "REQ_Asset_Name",
+      "name": "Asset Name required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Asset Name",
+          "op": "required"
+        }
+      ],
+      "message": "Asset Name is required"
+    },
+    {
+      "id": "REQ_Asset_Description",
+      "name": "Asset Description required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Asset Description",
+          "op": "required"
+        }
+      ],
+      "message": "Asset Description is required"
+    },
+    {
+      "id": "REQ_JACS_Code",
+      "name": "JACS Code required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "JACS Code",
+          "op": "required"
+        }
+      ],
+      "message": "JACS Code is required"
+    },
+    {
+      "id": "REQ_JACS_Code_ID",
+      "name": "JACS Code ID required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "JACS Code ID",
+          "op": "required"
+        }
+      ],
+      "message": "JACS Code ID is required"
+    },
+    {
+      "id": "REQ_Asset_Status",
+      "name": "Asset Status required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Asset Status",
+          "op": "required"
+        }
+      ],
+      "message": "Asset Status is required"
+    },
+    {
+      "id": "REQ_Asset_Record_Status",
+      "name": "Asset Record Status required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Asset Record Status",
+          "op": "required"
+        }
+      ],
+      "message": "Asset Record Status is required"
+    },
+    {
+      "id": "REQ_Manufacturer",
+      "name": "Manufacturer required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Manufacturer",
+          "op": "required"
+        }
+      ],
+      "message": "Manufacturer is required"
+    },
+    {
+      "id": "REQ_Model",
+      "name": "Model required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Model",
+          "op": "required"
+        }
+      ],
+      "message": "Model is required"
+    },
+    {
+      "id": "REQ_Serial",
+      "name": "Serial required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Serial",
+          "op": "required"
+        }
+      ],
+      "message": "Serial is required"
+    },
+    {
+      "id": "REQ_In_Service_Date",
+      "name": "In-Service Date required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "In-Service Date",
+          "op": "required"
+        }
+      ],
+      "message": "In-Service Date is required"
+    },
+    {
+      "id": "REQ_CA_Age",
+      "name": "CA-Age required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "CA-Age",
+          "op": "required"
+        }
+      ],
+      "message": "CA-Age is required"
+    },
+    {
+      "id": "REQ_CA_Condition",
+      "name": "CA-Condition required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "CA-Condition",
+          "op": "required"
+        }
+      ],
+      "message": "CA-Condition is required"
+    },
+    {
+      "id": "REQ_CA_Environment",
+      "name": "CA-Environment required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "CA-Environment",
+          "op": "required"
+        }
+      ],
+      "message": "CA-Environment is required"
+    },
+    {
+      "id": "REQ_Images",
+      "name": "Images required",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Images",
+          "op": "required"
+        }
+      ],
+      "message": "Images is required"
+    },
+    {
+      "id": "STATUS_ONOFF",
+      "name": "Status must be Online or Offline",
+      "severity": "error",
+      "checks": [
+        {
+          "field": "Status",
+          "op": "in",
+          "value": [
+            "Online",
+            "Offline"
+          ]
+        }
+      ],
+      "message": "Status must be Online or Offline"
+    },
+    {
+      "id": "TAG_OR_REASON",
+      "name": "TagID or Reason Not Tagged required",
+      "severity": "error",
+      "any": [
+        {
+          "field": "TagID",
+          "op": "required"
+        },
+        {
+          "field": "Reason Not Tagged",
+          "op": "required"
+        }
+      ],
+      "message": "Provide TagID or Reason Not Tagged"
+    },
+    {
+      "id": "MATCH_AN_Site_Name",
+      "name": "Site Name must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Site Name",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Site Name does not match Asset Name"
+    },
+    {
+      "id": "MATCH_AN_Work_Zone",
+      "name": "Work Zone must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Work Zone",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Work Zone does not match Asset Name"
+    },
+    {
+      "id": "MATCH_AN_Building_Name",
+      "name": "Building Name must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Building Name",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Building Name does not match Asset Name"
+    },
+    {
+      "id": "MATCH_AN_Floor",
+      "name": "Floor must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Floor",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Floor does not match Asset Name"
+    },
+    {
+      "id": "MATCH_AN_Room",
+      "name": "Room must match Asset Name",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Room",
+          "op": "eq_field",
+          "other": "Asset Name"
+        }
+      ],
+      "message": "Room does not match Asset Name"
+    },
+    {
+      "id": "ASSETNUM_LOOKUP",
+      "name": "Asset Number should exist in reference list (optional)",
+      "severity": "warn",
+      "checks": [
+        {
+          "field": "Asset Number",
+          "op": "lookup_in",
+          "ref": "asset_numbers"
+        }
+      ],
+      "message": "Asset Number not found in reference list"
+    }
+  ]
+};
+let refIndex = null;
+
+// ===== UI =====
+const rulesArea = document.getElementById('rulesArea');
+const dataFile = document.getElementById('dataFile');
+const refFile = document.getElementById('refFile');
+const rulesFile = document.getElementById('rulesFile');
+const fileStatus = document.getElementById('fileStatus');
+const resultsWrap = document.getElementById('resultsWrap');
+const btnRun = document.getElementById('btnRun');
+const btnDownload = document.getElementById('btnDownload');
+const btnSaveRules = document.getElementById('btnSaveRules');
+
+rulesArea.value = JSON.stringify(rules, null, 2);
+
+dataFile.addEventListener('change', async (e)=>{
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const text = await file.text();
+  const rows = parseCSV(text);
+  if (!rows.length) { fileStatus.textContent = 'Empty CSV'; return; }
+  headers = rows[0];
+  csvRows = rows.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = r[i] ?? '');
+    return obj;
+  });
+  fileStatus.textContent = `Loaded ${file.name} • ${csvRows.length} rows • ${headers.length} columns`;
+});
+
+refFile.addEventListener('change', async (e)=>{
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const text = await file.text();
+  const rows = parseCSV(text);
+  const idx = {"asset_numbers": set()};
+  const header = rows[0] || [];
+  const colIdx = header.indexOf("Asset Number");
+  if (colIdx >= 0) {
+    for (let i=1;i<rows.length;i++) {
+      const key = String(rows[i][colIdx]||'').trim();
+      if (key) idx.asset_numbers.add(key);
+    }
+  }
+  refIndex = idx;
+  alert('Reference loaded: ' + (refIndex.asset_numbers?.size || 0) + ' Asset Number(s)');
+});
+
+rulesFile.addEventListener('change', async (e)=>{
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    rules = JSON.parse(text);
+    rulesArea.value = JSON.stringify(rules, null, 2);
+  } catch(err) { alert('Invalid JSON in rules file'); }
+});
+
+btnRun.addEventListener('click', runValidation);
+document.addEventListener('keydown', (e)=>{
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runValidation();
+});
+btnDownload.addEventListener('click', downloadFailures);
+btnSaveRules.addEventListener('click', ()=>{
+  try{
+    const json = JSON.parse(rulesArea.value);
+    downloadFile('rules.json', JSON.stringify(json, null, 2), 'application/json');
+  }catch(err){ alert('Rules JSON invalid. Fix it before saving.'); }
+});
+
+function renderResults(){
+  if (!failures.length) {
+    resultsWrap.innerHTML = '<div class="empty">No failures found (or no run yet).</div>';
+    return;
+  }
+  const headersOut = ["Row","#Failures","Rule ID","Severity","Message","Details"];
+  let html = '<div class="scroll"><table><thead><tr>' + headersOut.map(h=>`<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+  for (const f of failures) {
+    html += `<tr>
+      <td>${f.rowIndex}</td>
+      <td>${f.failCount}</td>
+      <td>${f.ruleId}</td>
+      <td><span class="pill ${f.severity==='warn'?'warn':'error'}">${f.severity}</span></td>
+      <td>${escapeHtml(f.message||'')}</td>
+      <td class="mono">${escapeHtml(f.details.join('; '))}</td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  resultsWrap.innerHTML = html;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+}
+
+function runValidation(){
+  failures = [];
+  let json;
+  try { json = JSON.parse(rulesArea.value); } catch(err) { alert('Rules JSON invalid: ' + err.message); return; }
+  rules = json;
+  if (!csvRows.length) { alert('Load a CSV first.'); return; }
+  const allRules = (rules.rules || []).filter(r => (Array.isArray(r.checks) && r.checks.length) || (Array.isArray(r.any) && r.any.length));
+  let rowIndex = 2;
+  for (const row of csvRows) {
+    for (const rule of allRules) {
+      const failed = runChecks(row, rule, refIndex);
+      if (failed.length) {
+        failures.push({
+          rowIndex,
+          ruleId: rule.id || '',
+          severity: rule.severity || 'error',
+          message: rule.message || rule.name || '',
+          details: failed,
+          row: row,
+          failCount: failed.length
+        });
+      }
+    }
+    rowIndex++;
+  }
+  renderResults();
+}
+
+function downloadFailures(){
+  if (!failures.length) { alert('No failures to download.'); return; }
+  const rows = [['Row','RuleID','Severity','Message','Details']];
+  for (const f of failures) rows.push([f.rowIndex, f.ruleId, f.severity, f.message||'', f.details.join('; ')]);
+  const csv = toCSV(rows);
+  downloadFile('validation_failures.csv', csv, 'text/csv');
+}
+</script>
+</body>
+</html>
